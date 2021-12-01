@@ -1,1 +1,9 @@
 A collection of useful scripts to run with [[https://babashka.org/][Babashka]]!
+
+* bb-components
+
+A script to find all the components that you should deploy your code to.
+
+A 'Component' is aany namespace with a -main function defined in it.
+
+** Usage
