@@ -1,5 +1,3 @@
-#!/usr/bin/env bb
-
 (ns me.vedang.scripts.components
   "A script to find all the components that you should deploy your code
   to. A 'Component' is any namespace with a -main function defined in
@@ -20,12 +18,7 @@
     :multi true
     :default ["test/" "qa/"]
     :update-fn conj]
-   ["-b" "--branch BRANCH"
-    "The feature/branch to register."
-    :default nil
-    :parse-fn identity
-    :validate [#(.startsWith % "feature/") "Must be a feature/ branch"]]
-   ["-h" "--help" "Show this help message"]])
+   ["-h" "--help"]])
 
 (defn usage
   [options-summary]
@@ -77,8 +70,15 @@
 (defn input
   "Shells out to git and finds files we are interested in."
   [earliest latest]
-  (when (and (shell/sh "which git") (shell/sh "which grep"))
-    (println "Hello")))
+  (if (zero? (:exit (shell/sh "which" "git")))
+    (filter #(cs/ends-with? % ".clj")
+            (cs/split
+             (:out
+              (shell/sh "git" "diff"
+                       earliest latest
+                       "--name-only"))
+             #"\n"))
+    []))
 
 (defn print-components
   [{:keys [earliest latest timeout]}]
@@ -88,10 +88,9 @@
   (let [files (input earliest latest)]
     (println (cs/join \newline files))))
 
-(defn -main [& args]
+(defn -main
+  [& args]
   (let [{:keys [opts exit-message ok?]} (validate-args args)]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
       (print-components opts))))
-
-(-main)

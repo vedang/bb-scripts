@@ -7,3 +7,6 @@ A script to find all the components that you should deploy your code to.
 A 'Component' is aany namespace with a -main function defined in it.
 
 ** Usage
+1. Compile the components script: ~bb uberscript target/components -m me.vedang.scripts.components~
+2. Copy the ~components~ script to where you want to run it and make it executable using ~chmod a+x~
+3. Run it and go through the help message: ~bb components --help~
