@@ -4,9 +4,28 @@ A collection of useful scripts to run with [[https://babashka.org/][Babashka]]!
 
 A script to find all the components that you should deploy your code to.
 
-A 'Component' is aany namespace with a -main function defined in it.
+If a namespace contains a ~-main~ function in it, it represents an independently deployable 'component'. A monolith repo can have many such components. For any code change, this script quickly finds all the components affected by the change. This ensures that something is not accidentally missed in testing. It is also a great way to find your core namespaces and to identify areas requiring refactoring.
 
-** Usage
-1. Compile the components script: ~bb uberscript target/components -m me.vedang.scripts.components~
-2. Copy the ~components~ script to where you want to run it and make it executable using ~chmod a+x~
-3. Run it and go through the help message: ~bb components --help~
+** Pre-requisites
+- Install Babashka: ~brew install borkdude/brew/babashka~
+- Install GNU-sed: ~brew install gnu-sed~
+
+Note: If you are on a Linux machine, replace ~gsed~ with ~sed~ in the instructions below.
+
+** Compiling the bb-components script
+Clone this repository, ~cd~ into it and run the following commands:
+#+begin_src sh :eval no
+  # Create the target directory for building the compiled scripts
+  mkdir target
+  # Compile the components script
+  bb uberscript target/bb-components -m me.vedang.scripts.components
+  # Add a directive to tell the system that this is a bb script
+  gsed -i '1s/^/#!\/usr\/bin\/env bb\n/' target/bb-components
+  # Make the script executable
+  chmod a+x target/bb-components
+  # Copy the script somewhere on your $PATH, so that it can be used anywhere
+  cp target/bb-components /somewhere/in/PATH
+#+end_src
+
+** Using the bb-components script
+Go to your code repository and run ~bb-components --help~. Read through the output to see how to run the script. Let me know if the documentation can be improved further.
