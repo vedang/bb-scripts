@@ -3,6 +3,7 @@
   to. A 'Component' is any namespace with a -main function defined in
   it."
   (:require [clojure.java.shell :as shell]
+            [clojure.set :as cset]
             [clojure.string :as cs]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.tools.namespace.dependency :as dep]
@@ -102,11 +103,49 @@
 
 (defn namespace-dep-graph
   "Build a dependency graph of all the clj namespaces in the given
-`source-paths`."
+  `source-paths`."
   [source-paths]
   (->> source-paths
        (mapcat #(find/find-sources-in-dir (File. %) find/clj))
        (file/add-files (dep/graph))))
+
+(defn files-or-dirs->namespaces
+  "For the given set of files or dir-paths, return the namespaces of all
+  the Clojure files."
+  [files-or-dirs]
+  (->> files-or-dirs
+       (mapcat #(find/find-namespaces-in-dir (File. %)))
+       set))
+
+(defn dependent-namespaces
+  "Given a tools.namespace `graph`, a function `valid-ns?` to identify
+  valid namespaces and a set of `ns-under-test`, return a mapping of
+  `ns->dependent-nss` . This is the full set of all namespaces
+  affected by any change in a `ns-under-test` namespace."
+  ;; Note: `dep/transitive-dependents-set` can return all dependents
+  ;; in one call, but getting data per namespace helps debugging /
+  ;; understanding why a particular ns was chosen
+  [graph valid-ns? ns-under-test]
+  (reduce (fn [acc n]
+            (->> n
+                 (dep/transitive-dependents (::track/deps graph))
+                 (filter valid-ns?)
+                 set
+                 (assoc acc n)))
+          {}
+          ns-under-test))
+
+(defn namespaces->file
+  "Given a tools.namespace `graph`, return a mapping of namespace ->
+  file obj for all entries in the graph."
+  [graph]
+  (reduce-kv (fn [acc k v] (assoc acc v k))
+             {}
+             (::file/filemap graph)))
+
+(def main-re
+  "Reg Ex to check if the current file contains a `-main` function"
+  #"defn -main")
 
 (defn print-components
   [{:keys [earliest latest timeout exclude-paths source-paths]}]
@@ -115,7 +154,16 @@
           (exit 1 (format "[components] Timeout! %s sec" timeout)))
   (let [files (input earliest latest exclude-paths)]
     (when (seq files)
-      (println (namespace-dep-graph source-paths)))))
+      (let [global-dep-graph (namespace-dep-graph source-paths)
+            global-excluded-nss (files-or-dirs->namespaces exclude-paths)
+            changed-nss (files-or-dirs->namespaces files)
+            dependent-nss (dependent-namespaces global-dep-graph
+                                                (complement global-excluded-nss)
+                                                changed-nss)
+            ns->file (namespaces->file global-dep-graph)]
+        (println
+         (filterv (comp (partial re-seq main-re) slurp ns->file)
+                  (apply cset/union (vals dependent-nss))))))))
 
 (defn -main
   [& args]
