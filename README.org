@@ -7,12 +7,14 @@ A script to find all the components that you should deploy your code to.
 If a namespace contains a ~-main~ function in it, it represents an independently deployable 'component'. A monolith repo can have many such components. For any code change, this script quickly finds all the components affected by the change. This ensures that something is not accidentally missed in testing. It is also a great way to find your core namespaces and to identify areas requiring refactoring.
 
 ** Pre-requisites
+
 - Install Babashka: ~brew install borkdude/brew/babashka~
 - Install GNU-sed: ~brew install gnu-sed~
 
 Note: If you are on a Linux machine, replace ~gsed~ with ~sed~ in the instructions below.
 
 ** Compiling the bb-components script
+
 Clone this repository, ~cd~ into it and run the following commands:
 #+begin_src sh :eval no
   # Create the target directory for building the compiled scripts
@@ -28,4 +30,31 @@ Clone this repository, ~cd~ into it and run the following commands:
 #+end_src
 
 ** Using the bb-components script
-Go to your code repository and run ~bb-components --help~. Read through the output to see how to run the script. Let me know if the documentation can be improved further.
+
+Go to your code repository and run ~bb-components --help~. Read through the output to see all the options the script accepts. The basic usage is to pass two points in git commit history to see what components are affected by the code changes. Example:
+#+begin_example
+➜ bb-components release-branch master
+Components impacted by these code changes:
+
+websupport.service
+jobs.runner
+webhook.service
+websdk.core.service
+api.core.service
+#+end_example
+
+The script also accepts filenames from stdin. This allows you to remove common files that might impact multiple components, but where you know that adding new data does not require deploying to all components. For example:
+#+begin_example
+➜ git diff 10.35.2 10.34.0 --name-only | rg -v "(specs|audit_trail).clj$" | bb-components --stdin -v -e src/migrators/
+Namespaces changed between these two points
+
+models.site
+models.blocking
+xhr.blocking
+
+Components impacted by these code changes:
+
+websupport.service => impacted by changes in [models.site models.blocking xhr.blocking]
+jobs.runner => impacted by changes in [models.site]
+webhook.service => impacted by changes in [models.blocking]
+#+end_example
