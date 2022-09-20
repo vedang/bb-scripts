@@ -18,4 +18,20 @@
                              ;; (shell/sh "gsed" "-i"
                              ;;           "'1s/^/#!\/usr\/bin\/env bb\n/'"
                              ;;           "bin/bb-plain-text-tabs")
+                             )}
+  components {:doc "Build the components script and copy it into bin"
+                   :task (do (fs/create-dirs "target")
+                             (fs/create-dirs "bin")
+                             (shell/sh "bb" "uberscript"
+                                       "target/bb-components"
+                                       "-m" "me.vedang.scripts.components")
+                             (shell/sh "chmod" "a+x"
+                                       "target/bb-components")
+                             (fs/copy "target/bb-components" "bin/"
+                                      {:replace-existing true})
+                             ;;; Escaping in the sed command fails.
+                             ;;; Need to ask someone how to do this.
+                             ;; (shell/sh "gsed" "-i"
+                             ;;           "'1s/^/#!\/usr\/bin\/env bb\n/'"
+                             ;;           "bin/bb-components")
                              )}}}
