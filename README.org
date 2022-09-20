@@ -80,3 +80,59 @@ websupport.service => impacted by changes in [models.site models.blocking xhr.bl
 jobs.runner => impacted by changes in [models.site]
 webhook.service => impacted by changes in [models.blocking]
 #+end_example
+
+* bb-plain-text-tabs
+
+A script to list all the open tabs in your browser and covert them to plain text in Org-Mode format.
+
+This script uses TabFS to get information of all the open tabs from the browser. To install TabFS, please refer to https://omar.website/tabfs/#setup"
+
+My philosophy on reading / watching content in the browser is: Never read anything just because you have clicked on it.
+
+The internet is full of interesting stuff that hijacks my attention. I end up getting completely distracted from my planned tasks. My solution to this is: I open all the links I want, but I don't read anything immediately. Instead, I capture the link in Org-Mode and schedule it for later (generally tomorrow). This way, when I am planning the day, I have a bunch of links in my Agenda. I choose which ones I want to read on any given day and defer / delete the rest. I use the excellent [[https://orgmode.org/manual/Agenda-Commands.html][Bulk Scatter]] tool built into Org Agenda for this.
+
+Earlier, I was capturing links manually, but now I have automated the task of collecting these links using this script.
+
+#+begin_example
+  ✦ ➜ bb-plain-text-tabs --help
+  Convert all open tabs to plain text Org Mode format. Optionally, close the open tabs.
+
+  Usage: bb-plain-text-tabs [options]
+
+  Options:
+    -fs,  --tabfs-mnt-path                *REQUIRED* TabFS mount path. The path on the filesystem where TabFS is mounted.
+    -hl,  --org-mode-heading-level        1                            The heading level at which link headings will be stored in Org Mode.
+    -s,   --scheduled-on           <date> tomorrow                     Date on which to schedule reading this batch of links, in yyyy-MM-dd format.
+    -del, --delete-tabs            <del>  false                        Boolean value to indicate if browser tabs should be closed
+
+  Examples:
+     bb-plain-text-tabs -fs <TabFS Mount Path> # Convert Open Tabs to Plain Text
+     bb-plain-text-tabs -fs <TabFS Mount Path> --delete-tabs # Delete tabs and print plain text
+     bb-plain-text-tabs -fs <TabFS Mount Path> | tee tabs.org # Capture Plain Text output to file
+#+end_example
+
+** Pre-requisites
+
+- Install Babashka: ~brew install borkdude/brew/babashka~
+- Install TabFS: https://omar.website/tabfs/#setup
+- Install GNU-sed: ~brew install gnu-sed~
+
+** Compiling the bb-plain-text-tabs script
+
+Clone this repository, ~cd~ into it and run the following commands: (Note: If you are on a Linux machine, replace ~gsed~ with ~sed~ in the instructions)
+#+begin_src sh :eval no
+  # Create the target directory for building the compiled scripts
+  mkdir target
+  # Compile the components script
+  bb uberscript target/bb-plain-text-tabs -m me.vedang.scripts.tablist
+  # Add a directive to tell the system that this is a bb script
+  gsed -i '1s/^/#!\/usr\/bin\/env bb\n/' target/bb-plain-text-tabs
+  # Make the script executable
+  chmod a+x target/bb-plain-text-tabs
+  # Copy the script somewhere on your $PATH, so that it can be used anywhere
+  cp target/bb-plain-text-tabs /somewhere/in/PATH
+#+end_src
+
+** Using the bb-plain-text-tabs script
+
+Run ~bb-plain-text-tabs --help~. Read through the output to see all the options the script accepts.

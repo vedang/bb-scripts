@@ -1,2 +1,21 @@
 {:deps {me.vedang.scripts/scripts {:local/root "."}}
- :min-bb-version "0.6.4"}
+ :min-bb-version "0.6.4"
+ :tasks
+ {:requires ([babashka.fs :as fs]
+             [clojure.java.shell :as shell])
+  plain-text-tabs {:doc "Build the plain-text-tabs script and copy it into bin"
+                   :task (do (fs/create-dirs "target")
+                             (fs/create-dirs "bin")
+                             (shell/sh "bb" "uberscript"
+                                       "target/bb-plain-text-tabs"
+                                       "-m" "me.vedang.scripts.tablist")
+                             (shell/sh "chmod" "a+x"
+                                       "target/bb-plain-text-tabs")
+                             (fs/copy "target/bb-plain-text-tabs" "bin/"
+                                      {:replace-existing true})
+                             ;;; Escaping in the sed command fails.
+                             ;;; Need to ask someone how to do this.
+                             ;; (shell/sh "gsed" "-i"
+                             ;;           "'1s/^/#!\/usr\/bin\/env bb\n/'"
+                             ;;           "bin/bb-plain-text-tabs")
+                             )}}}
