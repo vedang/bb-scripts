@@ -1,2 +1,5 @@
 target/
 components.jar
+.cpcache/
+.nrepl-port
+tabs.org
