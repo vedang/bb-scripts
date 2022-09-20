@@ -1,5 +1,15 @@
 A collection of useful scripts to run with [[https://babashka.org/][Babashka]]!
 
+* Table of Contents                                                     :TOC:
+- [[#bb-components][bb-components]]
+  - [[#pre-requisites][Pre-requisites]]
+  - [[#compiling-the-bb-components-script][Compiling the bb-components script]]
+  - [[#using-the-bb-components-script][Using the bb-components script]]
+- [[#bb-plain-text-tabs][bb-plain-text-tabs]]
+  - [[#pre-requisites-1][Pre-requisites]]
+  - [[#compiling-the-bb-plain-text-tabs-script][Compiling the bb-plain-text-tabs script]]
+  - [[#using-the-bb-plain-text-tabs-script][Using the bb-plain-text-tabs script]]
+
 * bb-components
 
 A script to find all the components that you should deploy your code to.
