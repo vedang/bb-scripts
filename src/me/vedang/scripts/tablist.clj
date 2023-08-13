@@ -128,7 +128,7 @@ are for the following items (in order):
   3. Title of the link to be stored.
   4. Date when the Tab is scheduled for reading: default is tomorrow.
   5. Date when the Tab was captured."
-  "%s TODO [[%s][%s]]\nSCHEDULED: %s\n%s")
+  "%s TODO [[%s][%s]]\nSCHEDULED: %s\nCaptured on: %s")
 
 (defn tabs->text
   "Convert the list of open tabs to a wall of text that can be stored in
