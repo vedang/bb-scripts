@@ -4,3 +4,5 @@ components.jar
 .nrepl-port
 tabs.org
 bin/
+.clj-kondo/.cache/
+.lsp/
