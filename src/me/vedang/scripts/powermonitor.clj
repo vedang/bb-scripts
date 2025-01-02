@@ -1,13 +1,19 @@
 (ns me.vedang.scripts.powermonitor
   (:require [babashka.cli :as cli]
             [babashka.fs :as fs]
+            [babashka.process :refer [sh]]
             [clojure.string :as str])
   (:import [java.time LocalDateTime]
            [java.time.format DateTimeFormatter]))
 
 (def thermal-paths
   ["/sys/class/thermal/thermal_zone0/temp"
-   "/sys/class/thermal/thermal_zone1/temp"])
+   "/sys/class/thermal/thermal_zone1/temp"
+   "/sys/class/thermal/thermal_zone2/temp"
+   "/sys/class/thermal/thermal_zone3/temp"
+   "/sys/class/thermal/thermal_zone4/temp"
+   "/sys/class/thermal/thermal_zone5/temp"
+   "/sys/class/thermal/thermal_zone6/temp"])
 
 (defn get-timestamp
   []
@@ -16,9 +22,9 @@
 (defn read-temp-file
   [path]
   (try (when (fs/exists? path)
-         (-> (slurp path)
+         (-> (:out (sh "cat" path))
              str/trim
-             (Double/parseDouble)
+             parse-double
              (/ 1000.0))) ; Convert to Celsius
        (catch Exception e
          (println "Error reading temperature from" path ":" (.getMessage e))
@@ -30,53 +36,52 @@
        (keep read-temp-file)
        (apply max 0.0)))
 
-(defn get-memory-info
-  []
-  (let [meminfo (slurp "/proc/meminfo")
-        total (-> (re-find #"MemTotal:\s+(\d+)" meminfo)
-                  second
-                  Long/parseLong)
-        free (-> (re-find #"MemFree:\s+(\d+)" meminfo)
-                 second
-                 Long/parseLong)
-        buffers (-> (re-find #"Buffers:\s+(\d+)" meminfo)
-                    second
-                    Long/parseLong)
-        cached (-> (re-find #"Cached:\s+(\d+)" meminfo)
-                   second
-                   Long/parseLong)]
+(defn get-mem-info
+  "See: https://www.baeldung.com/linux/proc-meminfo for more information"
+  [meminfo] ;; [tag: mem_usage]
+  (let [mem-find (fn [metric]
+                   (let [re-pat (re-pattern (str metric ":\\s+(\\d+)"))]
+                     (-> (re-find re-pat meminfo)
+                         second
+                         parse-long)))
+        total (mem-find "MemTotal")
+        free (mem-find "MemFree")
+        buffers (mem-find "Buffers")
+        cached (mem-find "Cached")]
     (double (* 100 (/ (- total (+ free buffers cached)) total)))))
 
+(defn get-memory-usage
+  [] ;; [ref: mem_usage]
+  (get-mem-info (:out (sh "cat" "/proc/meminfo"))))
+
+(defn- get-cpu-info
+  [proc-stat] ;; [ref: cpu_usage]
+  (zipmap [:user :nice :system :idle :iowait :irq :softirq]
+          (mapv parse-long
+            (take 7
+                  (-> proc-stat
+                      (str/split-lines)
+                      first
+                      (str/split #"\s+")
+                      rest)))))
+
 (defn get-cpu-percent
+  "See https://www.linuxhowtos.org/System/procstat.htm for more detailed information"
+  ;; [tag: cpu_usage]
   []
-  (let [cpu-info1 (-> (slurp "/proc/stat")
-                      (str/split-lines)
-                      first
-                      (str/split #"\s+"))
+  (let [first-read (get-cpu-info (:out (sh "cat" "/proc/stat")))
         _ (Thread/sleep 1000) ; Wait 1 second
-        cpu-info2 (-> (slurp "/proc/stat")
-                      (str/split-lines)
-                      first
-                      (str/split #"\s+"))
-        parse-values (fn [info]
-                       (->> (subvec info 1)
-                            (take 7)
-                            (mapv #(Long/parseLong %))))
-        values1 (parse-values cpu-info1)
-        values2 (parse-values cpu-info2)
-        idle1 (nth values1 3)
-        idle2 (nth values2 3)
-        total1 (apply + values1)
-        total2 (apply + values2)
-        idle-diff (- idle2 idle1)
-        total-diff (- total2 total1)]
-    (* 100.0 (/ (- total-diff idle-diff) total-diff))))
+        second-read (get-cpu-info (:out (sh "cat" "/proc/stat")))
+        idle-time (- (:idle second-read) (:idle first-read))
+        total-time (- (apply + (vals second-read)) (apply + (vals first-read)))
+        actually-working (- total-time idle-time)]
+    (* 100.0 (/ actually-working total-time))))
 
 (defn collect-metrics
   []
   {:timestamp (get-timestamp),
    :cpu-percent (get-cpu-percent),
-   :memory-percent (get-memory-info),
+   :memory-percent (get-memory-usage),
    :temperature (get-cpu-temp)})
 
 (defn write-csv-header
@@ -126,8 +131,7 @@
 
 (def cli-options
   {:duration {:coerce :long, :desc "Duration to monitor in seconds"},
-   :interval
-   {:coerce :double, :default 1.0, :desc "Sampling interval in seconds"},
+   :interval {:coerce :long, :default 1, :desc "Sampling interval in seconds"},
    :output {:default "power_metrics.csv", :desc "Output file path"}})
 
 (defn -main [& args] (monitor (cli/parse-opts args {:spec cli-options})))
